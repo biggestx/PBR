@@ -1,4 +1,4 @@
-Shader "PBR/LambertSchlick"
+Shader "PBR/Smith"
 {
 	Properties
 	{
@@ -8,6 +8,7 @@ Shader "PBR/LambertSchlick"
 		_Specular("Specular", Color) = (1, 1, 1, 1)
 		_Roughness("Roughness", Range(0,1)) = 0.5
 		_Metalness("Metalness", Range(0,1)) = 0.5
+		[Toggle(_DISNEY)] _DISNEY("Disney", float) = 1
 	}
 	SubShader
 	{
@@ -37,6 +38,8 @@ Shader "PBR/LambertSchlick"
 			#pragma multi_compile _ _MAIN_LIGHT_SHADOWS
 			#pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
 			#pragma multi_compile _ _SHADOWS_SOFT
+
+			#pragma shader_feature_local _DISNEY
 
 			#define PI 3.14159265359
 			#define EPS 0.00001
@@ -97,7 +100,12 @@ Shader "PBR/LambertSchlick"
 			inline float3 diffuseLambert(float3 albedo)
 			{
 				return albedo / PI;
+			}
 
+			inline float3 diffuseDisney(float3 base, float roughness, float hl, float nl, float nv)
+			{
+				float fd90 = 0.5 + 2 * pow(hl, 2) * roughness;
+				return  base / PI * (1 + (fd90 - 1) * pow(1 - nl, 5)) * (1 + (fd90 - 1) * pow(1 - nv, 5));
 			}
 
 			inline float3 specularBlinnPhong(float roughness, float nh) 
@@ -135,7 +143,6 @@ Shader "PBR/LambertSchlick"
 				return 1.0 / (gl * gv + 1e-5f);
 			}
 
-			// from unreal engine
 			float G_SmithBeckmannVisibilityTerm(float nl, float nv, float roughness)
 			{
 				float c = 0.797884560802865f;
@@ -164,8 +171,7 @@ Shader "PBR/LambertSchlick"
 
 				F = F_Fresnel(F0, nv, roughness);
 				D = D_GGX_mine(a2, nh);
-				//G = G_SmithBeckmannVisibilityTerm(nl, nv, roughness);
-				G = G_SchlickGGX(nv, roughness);
+				G = G_SmithBeckmannVisibilityTerm(nl, nv, roughness);
 
 				return nl * D * F * G;
 				//return (D * F * G) / (nl * nv + EPS);
@@ -193,7 +199,6 @@ Shader "PBR/LambertSchlick"
 				o.viewDir = normalize(_WorldSpaceCameraPos.xyz - mul(GetObjectToWorldMatrix(), float4(v.vertex.xyz, 1.0)).xyz);
 				
 				LocalToTBN(v.normal, v.tangent, o.T, o.B, o.N);
-
 
 				VertexPositionInputs vertexInput = GetVertexPositionInputs(v.vertex.xyz);
 				o.shadowCoord = GetShadowCoord(vertexInput);
@@ -231,8 +236,13 @@ Shader "PBR/LambertSchlick"
 
 				float3 F0 = lerp(float3(0.04, 0.04, 0.04), albedo, _Metalness);
 
-
-				float3 diffuse = diffuseLambert(albedo.rgb) * PI * light.color * nl;
+				float3 diffuse = float3(0, 0, 0);
+				#ifdef _DISNEY
+				diffuse = diffuseDisney(albedo.rgb, _Roughness, lh, nl, nv) * PI * light.color * nl;
+				#else
+				diffuse = diffuseLambert(albedo.rgb) * PI * light.color * nl;
+				#endif
+				
 				float3 specular = Cooktorrance(nl, lh, nh, nv, vh, F0, _Roughness, _Specular);
 				
 				half3 ambient = SampleSH(normal);
