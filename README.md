@@ -13,7 +13,8 @@ Languages
 
 Features
 ----
-  - Cook-Torrance BRDF
+  - Microfacet BRDF
+  - Cook-Torrance
   - Smith GGX
   - Schlick GGX
   - Lambert Diffuse
