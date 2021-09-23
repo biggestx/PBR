@@ -161,7 +161,7 @@ Shader "PBR/Schlick"
 				return num / denom;
 			}
 
-			float3 Cooktorrance(float nl, float lh, float nh, float nv, float vh, float3 F0, float roughness, float3 specColor)
+			float3 specularBRDF(float nl, float lh, float nh, float nv, float vh, float3 F0, float roughness, float3 specColor)
 			{
 
 				float3 F;
@@ -175,7 +175,11 @@ Shader "PBR/Schlick"
 				//G = G_SmithBeckmannVisibilityTerm(nl, nv, roughness);
 				G = G_SchlickGGX(nv, roughness);
 
+				// cook-torrance
+				//return saturate((D * F * G) / ((PI * nl) * nv));
+
 				return nl * D * F * G;
+				
 				//return (D * F * G) / (nl * nv + EPS);
 			}
 			float3 sRGB2Lin(float3 col)
@@ -247,7 +251,7 @@ Shader "PBR/Schlick"
 				diffuse = diffuseLambert(albedo.rgb) * PI * light.color * nl;
 				#endif
 
-				float3 specular = Cooktorrance(nl, lh, nh, nv, vh, F0, _Roughness, _Specular);
+				float3 specular = specularBRDF(nl, lh, nh, nv, vh, F0, _Roughness, _Specular);
 				
 				half3 ambient = SampleSH(normal);
 

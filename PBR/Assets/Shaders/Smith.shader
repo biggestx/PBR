@@ -160,7 +160,7 @@ Shader "PBR/Smith"
 				return num / denom;
 			}
 
-			float3 Cooktorrance(float nl, float lh, float nh, float nv, float vh, float3 F0, float roughness, float3 specColor)
+			float3 specularBRDF(float nl, float lh, float nh, float nv, float vh, float3 F0, float roughness, float3 specColor)
 			{
 
 				float3 F;
@@ -172,6 +172,9 @@ Shader "PBR/Smith"
 				F = F_Fresnel(F0, nv, roughness);
 				D = D_GGX_mine(a2, nh);
 				G = G_SmithBeckmannVisibilityTerm(nl, nv, roughness);
+
+				// cook-torrance
+				//return saturate((D * F * G) / ((PI * nl) * nv));
 
 				return nl * D * F * G;
 				//return (D * F * G) / (nl * nv + EPS);
@@ -243,7 +246,7 @@ Shader "PBR/Smith"
 				diffuse = diffuseLambert(albedo.rgb) * PI * light.color * nl;
 				#endif
 				
-				float3 specular = Cooktorrance(nl, lh, nh, nv, vh, F0, _Roughness, _Specular);
+				float3 specular = specularBRDF(nl, lh, nh, nv, vh, F0, _Roughness, _Specular);
 				
 				half3 ambient = SampleSH(normal);
 
